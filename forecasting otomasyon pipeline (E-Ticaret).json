@@ -1,0 +1,469 @@
+{
+  "name": "forecasting otomasyon pipeline (E-Ticaret)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtHour": 12
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1600,
+        0
+      ],
+      "id": "20d0b27e-1ef2-4817-8e0d-9f740836146d",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1-VZc4Dmy_2XjBwm6RwXZ9pFcAAWSCxI9SIwJKnXtvzA",
+          "mode": "list",
+          "cachedResultName": "E-Ticaret Satış ve Stok",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-VZc4Dmy_2XjBwm6RwXZ9pFcAAWSCxI9SIwJKnXtvzA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Satis_Verileri",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-VZc4Dmy_2XjBwm6RwXZ9pFcAAWSCxI9SIwJKnXtvzA/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1344,
+        96
+      ],
+      "id": "13cbde36-5bab-4a26-bcc0-67159c0e1202",
+      "name": "Geçmiş Verileri Çekme",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LkLh0vivcxc7ldN4",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "let item = $input.item.json;\n\nif (item.Satilan_Adet === null || item.Satilan_Adet === undefined || item.Satilan_Adet === \"\") {\n    item.Satilan_Adet = 0;\n} else {\n    item.Satilan_Adet = Number(item.Satilan_Adet);\n}\n\nif (item.Mevcut_Stok === null || item.Mevcut_Stok === undefined || item.Mevcut_Stok === \"\") {\n    item.Mevcut_Stok = 0;\n} else {\n    item.Mevcut_Stok = Number(item.Mevcut_Stok);\n}\n\nif (item.Urun_Adi === null || item.Urun_Adi === undefined || item.Urun_Adi.trim() === \"\") {\n    item.Urun_Adi = \"Bilinmeyen Ürün\";\n}\nreturn { json: item };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1152,
+        96
+      ],
+      "id": "28233e53-f0b7-49ff-9c03-f265a6582b95",
+      "name": "Veri Temizleme ve Boşluk Doldurma"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.1-flash-lite",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.1-flash-lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Sen profesyonel bir e-ticaret veri analitiği yapay zekasısın. Sana bir e-ticaret mağazasının geçmiş satışlarını ve senin bir önceki tahmin performansını içeren verileri veriyorum.\n\nVeriler: \n{{ $json.clean_data }}\n\nÖZ DEĞERLENDİRME VE GERİ BİLDİRİM (FEEDBACK LOOP):\nSenin geçen haftaki tahmin başarın ve performans raporun şu şekildedir: \n{{ $json.degerlendirme_raporu }}\n\nGörevin:\n1. Yukarıdaki hata payını (MAPE) ve yönelimini analiz et. Eğer geçmişte \"Aşırı Tahmin\" yapmışsan bu hafta daha temkinli; \"Eksik Tahmin\" yapmışsan trendi yakalamak için daha agresif bir projeksiyon çiz.\n2. Her bir ürünün geçmiş satış trendlerini analiz ederek önümüzdeki 7 gün içinde toplam kaç adet satılacağını tahmin et (Tahmini_Satis_7Gun).\n3. Tahmin yapacağın önümüzdeki 7 günlük periyodun tarihlerini analiz et. Bu tarihler arasında Türkiye'deki resmi tatiller, dini bayramlar, hafta sonları veya \"Anneler Günü\", \"Okula Dönüş\" gibi özel günler varsa, e-ticaret satış hacmindeki olası artış veya azalışları mutlaka tahmin rakamlarına yansıt.\n4. Eğer önümüzdeki 7 günlük tahmini satış miktarı, ürünün şu anki mevcut stoğundan (Mevcut_Stok) DAHA FAZLA ise, \"Durum\" alanını \"Kritik\" yap. Değilse \"Normal\" yap.\n5. \"Aciklama\" alanına bu tahmini neden yaptığına dair en fazla 1 cümlelik Türkçe bir gerekçe yaz.\n\nÖNEMLİ KURAL: Bana açıklama, giriş veya kod bloğu yazma. SADECE aşağıdaki formatta geçerli bir JSON Array döndür. JSON anahtarlarının (Key) isimlerini ASLA değiştirme, harf hatası yapma ve birebir aynılarını kullan:\n[{\"Urun_Adi\": \"Ürün İsmi\", \"Tahmini_Satis_7Gun\": 45, \"Mevcut_Stok\": 20, \"Durum\": \"Kritik\", \"Aciklama\": \"Gerekçe\"}]"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        -480,
+        0
+      ],
+      "id": "265cadfe-eb40-48fb-a75c-80a85807e352",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "AOd2u1lGdZU33pUw",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiText = $input.first().json.content.parts[0].text;\n\nconst cleanText = aiText.replace(/```json/gi, \"\").replace(/```/g, \"\").trim();\n\nconst parsedData = JSON.parse(cleanText);\nreturn parsedData.map(item => ({ json: item }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        0
+      ],
+      "id": "c5be9dfc-7625-4018-90a5-10fae2495b29",
+      "name": "Yapay Zeka Çıktısını Ayrıştırma"
+    },
+    {
+      "parameters": {
+        "sendTo": "hasansafaaytas@gmail.com",
+        "subject": "=🚨 ACİL: KRİTİK STOK UYARISI - {{ $json.Urun_Adi }}",
+        "message": "=<h3>🚨 Kritik Stok ve Talep Tahmin Raporu 🚨</h3> <p>Merhaba Satın Alma Ekibi,</p> <p>Yapılan son yapay zeka analizine göre depo stoklarımız önümüzdeki hafta talebini karşılamakta yetersiz kalabilir.</p>  <table border=\"1\" cellpadding=\"5\" style=\"border-collapse: collapse;\">   <tr style=\"background-color: #f2f2f2;\">     <th>Ürün Adı</th>     <th>Mevcut Stok</th>     <th>Önümüzdeki 7 Günlük Tahmini Talep</th>   </tr>   <tr>     <td><b>{{ $json.Urun_Adi }}</b></td>     <td style=\"color: red;\"><b>{{ $json.Mevcut_Stok }} adet</b></td>     <td><b>{{ $json.Tahmini_Satis_7Gun }} adet</b></td>   </tr> </table>  <p><b>Yapılan Analiz Gerekçesi:</b> {{ $json.Aciklama }}</p> <p><i>Lütfen tedarik zincirinde aksama yaşanmaması için üretici/tedarikçi firma ile acilen iletişime geçerek yeni sipariş oluşturun.</i></p> <hr> <p style=\"font-size: 11px; color: gray;\">Bu e-posta n8n & Google Gemini Otomasyon Pipeline'ı tarafından otomatik olarak üretilmiştir.</p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        496,
+        -96
+      ],
+      "id": "e1ca2300-8d22-4737-be61-5939686e9854",
+      "name": "Send a message",
+      "webhookId": "da78f866-9e6e-4a85-8609-82476b3d5e16",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "TS0mCxa9zJQcQ30K",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1-VZc4Dmy_2XjBwm6RwXZ9pFcAAWSCxI9SIwJKnXtvzA",
+          "mode": "list",
+          "cachedResultName": "E-Ticaret Satış ve Stok",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-VZc4Dmy_2XjBwm6RwXZ9pFcAAWSCxI9SIwJKnXtvzA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 281854232,
+          "mode": "list",
+          "cachedResultName": "Tahmin_Raporlari",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-VZc4Dmy_2XjBwm6RwXZ9pFcAAWSCxI9SIwJKnXtvzA/edit#gid=281854232"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1344,
+        -80
+      ],
+      "id": "23e9e002-63fd-455c-9abf-d1dd6ee0904f",
+      "name": "Eski Tahminleri Çekme",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LkLh0vivcxc7ldN4",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const currentSales = $input.item.json[\"Input 2\"] || $input.all().map(item => item.json);\nconst oldPredictions = $input.item.json[\"Input 1\"] || $(\"Eski Tahminleri Çekme\").all().map(item => item.json);\n\nlet degerlendirmeNotu = \"Henüz geçmiş tahmin verisi bulunmuyor, ilk tahmininizi yapıyorsunuz.\";\n\nif (oldPredictions.length > 0) {\n    let toplamMape = 0;\n    let eslesenUrunSayisi = 0;\n    let raporDetayi = [];\n\n    oldPredictions.forEach(pred => {\n        const urunSatislari = currentSales\n            .filter(sale => sale.Urun_Adi === pred.Urun_Adi)\n            .sort((a, b) => new Date(a.Tarih) - new Date(b.Tarih))\n            .slice(-7); \n        \n        if (urunSatislari.length > 0) {\n            const gerceklesenSatis = urunSatislari.reduce((sum, current) => sum + Number(current.Satilan_Adet || 0), 0);\n            const eskiTahmin = Number(pred.Tahmini_Satis_7Gun || 0);\n\n            if (gerceklesenSatis > 0) {\n                const mutlakHata = Math.abs(gerceklesenSatis - eskiTahmin);\n                const mape = (mutlakHata / gerceklesenSatis) * 100;\n                \n                toplamMape += mape;\n                eslesenUrunSayisi++;\n\n                const yonelim = eskiTahmin > gerceklesenSatis ? \"Aşırı Tahmin (Over-forecast)\" : \"Eksik Tahmin (Under-forecast)\";\n                raporDetayi.push(`${pred.Urun_Adi} için tahmin hatası (MAPE): %${mape.toFixed(1)} (${yonelim}).`);\n            }\n        }\n    });\n\n    if (eslesenUrunSayisi > 0) {\n        const ortalamaMape = toplamMape / eslesenUrunSayisi;\n        const genelDogruluk = 100 - ortalamaMape;\n        degerlendirmeNotu = `Geçen haftaki genel tahmin doğruluk oranınız: %${genelDogruluk.toFixed(1)}. Ortalama Hata (MAPE): %${ortalamaMape.toFixed(1)}. Detaylar: ${raporDetayi.join(\" \")}`;\n    }\n}\n\nreturn {\n    json: {\n        degerlendirme_raporu: degerlendirmeNotu,\n        clean_data: JSON.stringify(currentSales, null, 2)\n    }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -704,
+        0
+      ],
+      "id": "d08ceaa3-c247-4313-b717-1efeaa3791db",
+      "name": "MAPE Hesaplama ve Veri Birleştirme"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1-VZc4Dmy_2XjBwm6RwXZ9pFcAAWSCxI9SIwJKnXtvzA",
+          "mode": "list",
+          "cachedResultName": "E-Ticaret Satış ve Stok",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-VZc4Dmy_2XjBwm6RwXZ9pFcAAWSCxI9SIwJKnXtvzA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 281854232,
+          "mode": "list",
+          "cachedResultName": "Tahmin_Raporlari",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-VZc4Dmy_2XjBwm6RwXZ9pFcAAWSCxI9SIwJKnXtvzA/edit#gid=281854232"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Mevcut_Stok": "={{ $json.Mevcut_Stok }}",
+            "Durum": "={{ $json.Durum }}",
+            "Aciklama": "={{ $json.Aciklama }}",
+            "Urun_Adi": "={{ $json.Urun_Adi }}",
+            "Tarih": "={{ $now.toFormat('yyyy-MM-dd') }}",
+            "Tahmini_Satis_7Gun": "={{ $json.Tahmini_Satis_7Gun }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Tarih",
+              "displayName": "Tarih",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Urun_Adi",
+              "displayName": "Urun_Adi",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tahmini_Satis_7Gun",
+              "displayName": "Tahmini_Satis_7Gun",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Mevcut_Stok",
+              "displayName": "Mevcut_Stok",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Durum",
+              "displayName": "Durum",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Aciklama",
+              "displayName": "Aciklama",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        64,
+        0
+      ],
+      "id": "d55a9db0-4dc8-41d3-8013-f148c9d75da8",
+      "name": "Sonuçları Raporlama",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LkLh0vivcxc7ldN4",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "038da43b-4f06-44db-8dff-c8e300018628",
+              "leftValue": "={{ $json.Durum }}",
+              "rightValue": "Kritik",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        272,
+        0
+      ],
+      "id": "f9f03b88-49f8-4d19-ab99-f92fb2a9ba17",
+      "name": "Kritik Durumları Filtreleme"
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "useDataOfInput": 2
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -896,
+        0
+      ],
+      "id": "7cbe3252-0dea-408c-bcdc-ab975853f52f",
+      "name": "Merge"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Eski Tahminleri Çekme",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Geçmiş Verileri Çekme",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Geçmiş Verileri Çekme": {
+      "main": [
+        [
+          {
+            "node": "Veri Temizleme ve Boşluk Doldurma",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Veri Temizleme ve Boşluk Doldurma": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Yapay Zeka Çıktısını Ayrıştırma",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Yapay Zeka Çıktısını Ayrıştırma": {
+      "main": [
+        [
+          {
+            "node": "Sonuçları Raporlama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Eski Tahminleri Çekme": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MAPE Hesaplama ve Veri Birleştirme": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sonuçları Raporlama": {
+      "main": [
+        [
+          {
+            "node": "Kritik Durumları Filtreleme",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kritik Durumları Filtreleme": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "MAPE Hesaplama ve Veri Birleştirme",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "16d2f957-3f86-4a3a-9d61-4eb9fde90017",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f920b3ff047e587fd409e3e1d56105d3fadfcbaca06c4c9a8d84f8372418d472"
+  },
+  "id": "ZUR8kWAhtlEWUPvw",
+  "tags": []
+}
